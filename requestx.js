@@ -1,130 +1,146 @@
 /**
- * Use RequestX to interacts with servers in realtime.
+ * A custom XMLHttpRequest wrapper for making HTTP requests.
  * @module RequestX
- * @author Olawoore Emmanuel Collins
  * @link https://github.com/devbadass
+ * @author Olawoore Emmanuel Collins
  */
-
-class RequestX extends XMLHttpRequest {
-
-
+class RequestX {
     /**
-     * Parameters for making an HTTP request with RequestX
+     * Create a RequestX instance.
      * @constructor
-     * @param {Object} param RequestParameters
-     * @param {String} param.url -  Request URL
-     * @param {String} param.response_type -  Response Type
+     * @param {Object} param - Request parameters
+     * @param {String} param.url - Request URL
+     * @param {String} param.response_type - Response Type
      */
-
-    constructor({
-        url,
-        response_type
-    }) {
-        super();
+    constructor({ url, response_type }) {
+        /**
+         * The URL of the HTTP request.
+         * @type {String}
+         */
         this.url = url;
-        this.responseType = response_type
+
+        /**
+         * The desired response type (e.g., 'json', 'text', etc.).
+         * @type {String}
+         */
+        this.responseType = response_type;
+
+        /**
+         * The XMLHttpRequest instance for making requests.
+         * @type {XMLHttpRequest}
+         */
+        this.xhr = new XMLHttpRequest();
     }
 
     /**
-     * Sets and combines a header in the POST request headers.
-     * @param {String} name Header Name
-     * @param {String} value Header Value
+     * Sets and combines a header for the request.
+     * @param {String} name - Header Name
+     * @param {String} value - Header Value
      */
-
-
-    setPOSTHeader(name, value) {
-        this.open("POST", this.url, true);
-        this.setRequestHeader(name, value);
+    setHeader(name, value) {
+        this.xhr.setRequestHeader(name, value);
     }
 
     /**
-     * Sets and combines a header in the GET request headers.
-     * @param {String} name Header Name
-     * @param {String} value Header Value
+     * Executes an HTTP request (GET or POST).
+     * @param {String} method - HTTP method (GET or POST)
+     * @param {Object|String} data - Request Data
+     * @param {Function} callback - Request Callback
+     * @throws {Error} If the HTTP request encounters an error.
+     * @example
+     * const request = new RequestX({ url: 'https://api.example.com/data', response_type: 'json' });
+     * request.request('GET', null, (response) => {
+     *     console.log('Response:', response);
+     * });
      */
+    request(method, data, callback) {
+        this.xhr.open(method, this.url, true);
+        this.xhr.responseType = this.responseType;
+        this.xhr.onload = () => {
+            if (this.xhr.readyState === 4) {
+                if (this.xhr.status >= 200 && this.xhr.status < 300) {
+                    callback(this.xhr.response);
+                } else {
+                    console.error(`RequestX Error: ${this.xhr.status}`);
+                }
+            }
+        };
 
+        this.xhr.onerror = () => {
+            console.error('RequestX Error: An error occurred.');
+        };
 
-    setPOSTHeader(name, value) {
-        this.open("GET", this.url, true);
-        this.setRequestHeader(name, value);
-    }
-
-    /**
-     * Executes an Error Callback on the Request
-     * @param {Function} callback Error Callback
-     */
-
-    error(callback) {
-        this.onerror = () => {
-            callback(this.response)
+        if (method === 'POST') {
+            if (typeof data === 'object') {
+                data = JSON.stringify(data);
+            }
+            this.setHeader('Content-Type', 'application/json');
+            this.xhr.send(data);
+        } else {
+            this.xhr.send();
         }
     }
 
     /**
      * Executes a POST Request.
-     * @param {Object} param
-     * @param {Any} data Request Data
-     * @param {Function} callback Request Callback
+     * @param {Object|String} data - Request Data
+     * @param {Function} callback - Request Callback
+     * @throws {Error} If the HTTP request encounters an error.
+     * @example
+     * const request = new RequestX({ url: 'https://api.example.com/data', response_type: 'json' });
+     * request.post({ key: 'value' }, (response) => {
+     *     console.log('Response:', response);
+     * });
      */
-
-    push(data, callback) {
-        if (typeof data === "object") {
-            this.data = JSON.stringify(data);
-        } else {
-            this.data = data;
-        }
-        this.open("POST", this.url, true);
-        this.onload = () => {
-            if (this.readyState === 4) {
-                if (this.status >= 200 && this.status < 300) {
-                    callback(this.response);
-                } else {
-                    console.log(new Error(`RequestX Error: ${this.status}`));
-                }
-            }
-        }
-        this.send(this.data);
+    post(data, callback) {
+        this.request('POST', data, callback);
     }
 
     /**
      * Executes a GET Request.
-     * @param {Function} callback Request Callback
+     * @param {Function} callback - Request Callback
+     * @throws {Error} If the HTTP request encounters an error.
+     * @example
+     * const request = new RequestX({ url: 'https://api.example.com/data', response_type: 'json' });
+     * request.get((response) => {
+     *     console.log('Response:', response);
+     * });
      */
-
-    pull(callback) {
-        this.open("GET", this.url, true);
-        this.onload = () => {
-            if (this.readyState === 4) {
-                if (this.status >= 200 && this.status < 300) {
-                    callback(this.response);
-                } else {
-                    console.log(new Error(`RequestX Error: ${this.status}`));
-                }
-            }
-        }
-        this.send();
+    get(callback) {
+        this.request('GET', null, callback);
     }
 
     /**
-     * Executes a FileUpload Request.
-     * @param {Object} fileOptions File Options containing file, filename, upload_directory
-     * @param {Function} callback Request Callback
+     * Executes a File Upload Request.
+     * @param {Object} fileOptions - File Options containing file, filename, and upload_directory
+     * @param {Function} callback - Request Callback
+     * @throws {Error} If the HTTP request encounters an error.
+     * @example
+     * const request = new RequestX({ url: 'https://api.example.com/upload', response_type: 'json' });
+     * const fileOptions = {
+     *     file: fileInput.files[0],
+     *     file_name: 'example.txt',
+     *     upload_directory: '/uploads'
+     * };
+     * request.uploadFile(fileOptions, (response) => {
+     *     console.log('Upload Response:', response);
+     * });
      */
-
     uploadFile(fileOptions, callback) {
-        const form_data = new FormData();
-        form_data.append("file", fileOptions.file);
-        form_data.append("file_name", fileOptions.file_name);
-        form_data.append("upload_directory", fileOptions.upload_directory);
+        const formData = new FormData();
+        formData.append('file', fileOptions.file);
+        formData.append('file_name', fileOptions.file_name);
+        formData.append('upload_directory', fileOptions.upload_directory);
 
-        this.onreadystatechange = () => {
-            if (this.readyState === 4 && this.status === 200) {
-                callback(this.response);
+        this.xhr.onreadystatechange = () => {
+            if (this.xhr.readyState === 4 && this.xhr.status === 200) {
+                callback(this.xhr.response);
             }
-        }
-        this.open("POST", this.url, true);
-        this.send(form_data);
+        };
+
+        this.setHeader('Content-Type', 'multipart/form-data');
+        this.request('POST', formData, callback);
     }
 }
 
-export default RequestX;
+export default RequestX
